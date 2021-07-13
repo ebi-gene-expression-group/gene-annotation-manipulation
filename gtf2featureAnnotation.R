@@ -84,7 +84,7 @@ option_list = list(
     action = "store",
     default = NULL,
     type = 'character',
-    help = 'If specified, sequences in the provided FASTA-format cDNAs file will be filtered to remove entries not present in the annotation'
+    help = 'Provide a cDNA file for extracting meta info and/or filtering.'
   ),
   make_option(
     c("-y", "--parse-cdna-names"),
@@ -94,11 +94,18 @@ option_list = list(
     help = 'Where --parse-cdnas is specified, parse out info from the Fasta name. Will likely only work for Ensembl GTFs'
   ),
   make_option(
-    c("-d", "--parse-cdnas-field"),
+    c("-d", "--parse-cdna-field"),
     action = "store",
     default = 'transcript_id',
     type = 'character',
     help = 'Where --parse-cdnas is specified, what field should be used to compare to identfiers from the FASTA?'
+  ),
+  make_option(
+    c("-i", "--fill-empty"),
+    action = "store",
+    default = NULL,
+    type = 'character',
+    help = 'Where --fields is specified, fill empty specified columns with the content of the specified field. Useful when you need to guarantee a value, for example a gene ID for a transcript/gene mapping. '
   ),
   make_option(
     c("-e", "--filter-cdnas-output"),
@@ -190,11 +197,9 @@ if (! is.na(opt$first_field)){
 # transcript ID versioning
 
 cdna_transcript_names <- NULL
-
 if (! is.null(opt$parse_cdnas)){
   
   suppressPackageStartupMessages(require(Biostrings))
-  
   cdna <- readDNAStringSet(opt$parse_cdnas)
   cdna_transcript_names <- unlist(lapply(names(cdna), function(x) unlist(strsplit(x, ' '))[1]  ))
 }  
@@ -229,16 +234,16 @@ if ( opt$feature_type == 'transcript' &&  all(c('transcript_id', 'transcript_ver
 
 if (! is.null(opt$parse_cdnas)){
   
-  filtered_cdna <- cdna[which(cdna_transcript_names %in% anno[[opt$parse_cdnas_field]])]
-  cdna_only =  cdna[which(! cdna_transcript_names %in% anno[[opt$parse_cdnas_field]])]
+  filtered_cdna <- cdna[which(cdna_transcript_names %in% anno[[opt$parse_cdna_field]])]
+  cdna_only =  cdna[which(! cdna_transcript_names %in% anno[[opt$parse_cdna_field]])]
   
   if (! is.null(opt$filter_cdnas_output)){
     print(paste("Filtering", opt$parse_cdnas, "to match the GTF"))
     
     # Filter out cDNAs without matching transcript entries in the GTF
     
-    if (! any(cdna_transcript_names %in% anno[[opt$parse_cdnas_field]])){
-      die(paste("ERROR: None of the input sequences have matching", opt$parse_cdnas_field, 'values in the GTF file'))
+    if (! any(cdna_transcript_names %in% anno[[opt$parse_cdna_field]])){
+      die(paste("ERROR: None of the input sequences have matching", opt$parse_cdna_field, 'values in the GTF file'))
     }
     
     print(paste('Storing filtered sequences to', opt$filter_cdnas_output))
@@ -262,6 +267,12 @@ if (! is.null(opt$fields) && opt$fields != ''){
     die(paste('ERROR:', fields, 'contains invalid field(s)'))
   }
   anno <- anno[,fields, drop = FALSE]
+  if (! is.null(opt$fill_empty)){
+    for (f in fields){
+      empty_vals <- is.na(anno[[f]])
+      anno[[f]][empty_vals] <- anno[[opt$fill_empty]][empty_vals]
+    } 
+  }
   anno <- anno[apply(anno, 1, function(x) all(! is.na(x))), ]
 }
 
