@@ -256,6 +256,8 @@ if (! is.null(opt$parse_cdnas)){
     print(paste("Info missing from GTF for", length(cdna_only), "supplied cDNAs, trying to extract it from the cDNA FASTA headers"))
     tinfo <- plyr::rbind.fill(lapply(names(cdna_only), parse_ensembl_fasta_transcript_info))
     anno <- plyr::rbind.fill(as.data.frame(anno), tinfo[,colnames(tinfo) %in% colnames(anno)])
+  }else{
+    print("No transcripts missing from GTF")
   }
 }
 

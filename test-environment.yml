@@ -1,0 +1,6 @@
+name: test
+dependencies:
+  - bats 
+  - r-optparse 
+  - bioconductor-rtracklayer
+  - r-plyr
