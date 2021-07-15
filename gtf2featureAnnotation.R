@@ -80,25 +80,39 @@ option_list = list(
     help = 'If specified,  marks in a column called "mito" features with the specified biotypes (case insensitve)'
   ),
   make_option(
-    c("-c", "--filter-cdnas"),
+    c("-c", "--parse-cdnas"),
     action = "store",
     default = NULL,
     type = 'character',
-    help = 'If specified, sequences in the provided FASTA-format cDNAs file will be filtered to remove entries not present in the annotation'
+    help = 'Provide a cDNA file for extracting meta info and/or filtering.'
   ),
   make_option(
-    c("-d", "--filter-cdnas-field"),
+    c("-y", "--parse-cdna-names"),
+    action = "store_true",
+    default = NULL,
+    type = 'character',
+    help = 'Where --parse-cdnas is specified, parse out info from the Fasta name. Will likely only work for Ensembl GTFs'
+  ),
+  make_option(
+    c("-d", "--parse-cdna-field"),
     action = "store",
     default = 'transcript_id',
     type = 'character',
-    help = 'Where --filter-cdnas is specified, what field should be used to compare to identfiers from the FASTA?'
+    help = 'Where --parse-cdnas is specified, what field should be used to compare to identfiers from the FASTA?'
+  ),
+  make_option(
+    c("-i", "--fill-empty"),
+    action = "store",
+    default = NULL,
+    type = 'character',
+    help = 'Where --fields is specified, fill empty specified columns with the content of the specified field. Useful when you need to guarantee a value, for example a gene ID for a transcript/gene mapping. '
   ),
   make_option(
     c("-e", "--filter-cdnas-output"),
     action = "store",
-    default = 'filtered.fa.gz',
+    default = NULL,
     type = 'character',
-    help = 'Where --filter-cdnas is specified, what file should the filtered sequences be output to?'
+    help = 'Where --parse-cdnas is specified, filter sequences and output to the specified file. No file will be output if this is not specified (for example for use of --dummy-from-cdnas only).'
   ),
   make_option(
     c("-u", "--version-transcripts"),
@@ -124,6 +138,34 @@ if (is.na(opt$gtf_file)){
 
 if (is.na(opt$output_file)){
   die('ERROR: No output file specified')
+}
+
+# Try to get some annotation fields from the the transcript names themselves-
+# this will likely not work for non-Ensembl GTFs
+
+parse_ensembl_fasta_transcript_info <- function(tname){
+  description <- sub(".*description:(.*)", "\\1", tname)
+  tname <- sub(" description:.*", '', tname)
+  tsplit <- unlist(strsplit(tname, ' '))
+  names(tsplit) <- lapply(tsplit, function(x){
+    if (grepl(':', x[1])){
+      cnames <- unique(unlist(lapply(strsplit(x, ':'), function(y) y[1])))
+      if (length(cnames) == 1){
+        return(cnames)
+      }else{
+        return(NULL)
+      }
+    }
+  })
+  names(tsplit)[1] <- 'transcript_id'
+  tsplit <- tsplit[names(tsplit) != 'NULL']
+  tsplit <- sub('.*:(.*)', "\\1", tsplit)
+  tsplit['description'] <- description
+  names(tsplit) <- sub('^gene$', 'gene_id', names(tsplit))
+  names(tsplit) <- sub('^gene_symbol$', 'gene_name', names(tsplit))
+  tsplit['gene_id'] <- sub('\\.[0-9]+', '', tsplit['gene_id'])
+  
+  data.frame(t(tsplit), stringsAsFactors = FALSE)
 }
 
 # Import the GTF
@@ -155,12 +197,10 @@ if (! is.na(opt$first_field)){
 # transcript ID versioning
 
 cdna_transcript_names <- NULL
-
-if (! is.null(opt$filter_cdnas)){
+if (! is.null(opt$parse_cdnas)){
   
   suppressPackageStartupMessages(require(Biostrings))
-  
-  cdna <- readDNAStringSet(opt$filter_cdnas)
+  cdna <- readDNAStringSet(opt$parse_cdnas)
   cdna_transcript_names <- unlist(lapply(names(cdna), function(x) unlist(strsplit(x, ' '))[1]  ))
 }  
 
@@ -182,7 +222,7 @@ if ( opt$feature_type == 'transcript' &&  all(c('transcript_id', 'transcript_ver
     print('Versioning transcripts')
   } else{
     opt$version_transcripts <- FALSE
-    print('Not versioning transcripts')
+    print('Not versioning transcripts (they do not look versioned)')
   }
 
   if ( opt$version_transcripts ){
@@ -192,20 +232,33 @@ if ( opt$feature_type == 'transcript' &&  all(c('transcript_id', 'transcript_ver
 
 # If specified, filter down a provided cDNA FASTA file
 
-if (! is.null(opt$filter_cdnas)){
+if (! is.null(opt$parse_cdnas)){
   
-  print(paste("Filtering", opt$filter_cdnas, "to match the GTF"))
-
-  # Filter out cDNAs without matching transcript entries in the GTF
+  filtered_cdna <- cdna[which(cdna_transcript_names %in% anno[[opt$parse_cdna_field]])]
+  cdna_only =  cdna[which(! cdna_transcript_names %in% anno[[opt$parse_cdna_field]])]
   
-  if (! any(cdna_transcript_names %in% anno[[opt$filter_cdnas_field]])){
-    die(paste("ERROR: None of the input sequences have matching", opt$filter_cdnas_field, 'values in the GTF file'))
+  if (! is.null(opt$filter_cdnas_output)){
+    print(paste("Filtering", opt$parse_cdnas, "to match the GTF"))
+    
+    # Filter out cDNAs without matching transcript entries in the GTF
+    
+    if (! any(cdna_transcript_names %in% anno[[opt$parse_cdna_field]])){
+      die(paste("ERROR: None of the input sequences have matching", opt$parse_cdna_field, 'values in the GTF file'))
+    }
+    
+    print(paste('Storing filtered sequences to', opt$filter_cdnas_output))
+    writeXStringSet(x = filtered_cdna, filepath = opt$filter_cdnas_output, compress = 'gzip')
   }
   
-  cdna <- cdna[which(cdna_transcript_names %in% anno[[opt$filter_cdnas_field]])]
-  
-  print(paste('Storing filtered sequences to', opt$filter_cdnas_output))
-  writeXStringSet(x = cdna, filepath = opt$filter_cdnas_output, compress = 'gzip')
+  # If we have transcripts with no annotation, see if we can get it from the fasta names
+
+  if (length(cdna_only) > 0 && ! is.null(opt$parse_cdna_names)){
+    print(paste("Info missing from GTF for", length(cdna_only), "supplied cDNAs, trying to extract it from the cDNA FASTA headers"))
+    tinfo <- plyr::rbind.fill(lapply(names(cdna_only), parse_ensembl_fasta_transcript_info))
+    anno <- plyr::rbind.fill(as.data.frame(anno), tinfo[,colnames(tinfo) %in% colnames(anno)])
+  }else{
+    print("No transcripts missing from GTF")
+  }
 }
 
 # If specified, subset to desired fields
@@ -216,6 +269,12 @@ if (! is.null(opt$fields) && opt$fields != ''){
     die(paste('ERROR:', fields, 'contains invalid field(s)'))
   }
   anno <- anno[,fields, drop = FALSE]
+  if (! is.null(opt$fill_empty)){
+    for (f in fields){
+      empty_vals <- is.na(anno[[f]])
+      anno[[f]][empty_vals] <- anno[[opt$fill_empty]][empty_vals]
+    } 
+  }
   anno <- anno[apply(anno, 1, function(x) all(! is.na(x))), ]
 }
 
