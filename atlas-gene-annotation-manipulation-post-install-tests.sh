@@ -14,6 +14,7 @@ setup() {
     part_test_gtf=${data_dir}/part.gtf
 
     gene_anno=${output_dir}/gene_anno.txt
+    enriched_gene_anno=${output_dir}/enriched_gene_anno.txt
     gene_id_to_symbol=${output_dir}/gene_id_to_symbol.txt
     t2gene=${output_dir}/t2gene.txt
     t2gene_part=${output_dir}/t2gene_part.txt
@@ -99,5 +100,16 @@ setup() {
 
     [ "$status" -eq 0 ]
     [ -f "$filtered_cdnas" ]
+}
+
+@test "Make a gene-level annotation file and include missing gene info from cDNA FASTA headers" {
+    if  [ "$resume" = 'true' ] && [ -f "$enriched_gene_anno" ]; then
+        skip "$enriched_gene_anno  exists"
+    fi
+
+    run rm -rf $enriched_gene_anno && gtf2featureAnnotation.R --gtf-file $test_gtf --version-transcripts --parse-cdnas $test_cdna  --parse-cdna-field "gene_id" --feature-type "gene" --parse-cdna-names --first-field "gene_id" --output-file $enriched_gene_anno
+
+    [ "$status" -eq 0 ]
+    [ -f "$enriched_gene_anno" ]
 }
 

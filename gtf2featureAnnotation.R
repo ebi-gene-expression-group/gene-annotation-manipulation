@@ -200,6 +200,7 @@ cdna_transcript_names <- NULL
 if (! is.null(opt$parse_cdnas)){
   
   suppressPackageStartupMessages(require(Biostrings))
+  print("Reading cDNAs")
   cdna <- readDNAStringSet(opt$parse_cdnas)
   cdna_transcript_names <- unlist(lapply(names(cdna), function(x) unlist(strsplit(x, ' '))[1]  ))
 }  
@@ -234,30 +235,50 @@ if ( opt$feature_type == 'transcript' &&  all(c('transcript_id', 'transcript_ver
 
 if (! is.null(opt$parse_cdnas)){
   
-  filtered_cdna <- cdna[which(cdna_transcript_names %in% anno[[opt$parse_cdna_field]])]
-  cdna_only =  cdna[which(! cdna_transcript_names %in% anno[[opt$parse_cdna_field]])]
+  # Derive annotation table from transcripts and use to augment GTF where necessary
+  
+  print("Parsing annotation info from cDNA FASTA headers")
+  tinfo <- plyr::rbind.fill(lapply(names(cdna), parse_ensembl_fasta_transcript_info))
+  
+  # If we're not parsing the headers for annotation and our feature type is
+  # transcript, then we can assume the transcript names are all we need.
+  
+  if (opt$feature_type == 'transcript' && is.null(opt$parse_cdna_names)){
+    tinfo <- data.frame(cdna_transcript_names)
+    colnames(tinfo) <- opt$parse_cdna_field  
+  }else{
+    new_info <- unique(tinfo[[opt$parse_cdna_field]][! tinfo[[opt$parse_cdna_field]] %in% anno[[opt$parse_cdna_field]]])
+      
+    # If we have transcripts with no annotation, see if we can get it from the fasta names
+    
+    if (length(new_info) > 0){
+      print(paste("Info missing from GTF for", length(new_info), "supplied", opt$feature_type, "features annotated in cDNA headers, merging in the extra info."))
+      
+      # Limit new info to features not present in the GTF, and columns which are
+      anno <- plyr::rbind.fill(as.data.frame(anno), tinfo[tinfo[[opt$parse_cdna_field]] %in% new_info, colnames(tinfo) %in% colnames(anno)])
+    }else{
+      print("No new info found in cDNA headers wrt GTF")
+    }
+  }else{
+    tinfo <- data.frame(cdna_transcript_names)
+    colnames(tinfo) <- opt$parse_cdna_field
+  }
+  
+  # Filter cDNAs if requested
   
   if (! is.null(opt$filter_cdnas_output)){
-    print(paste("Filtering", opt$parse_cdnas, "to match the GTF"))
+    print(paste("Filtering", opt$parse_cdnas, "to match available annotations"))
     
-    # Filter out cDNAs without matching transcript entries in the GTF
+    # Filter out cDNAs without matching transcript entries in the annotation table
     
     if (! any(cdna_transcript_names %in% anno[[opt$parse_cdna_field]])){
       die(paste("ERROR: None of the input sequences have matching", opt$parse_cdna_field, 'values in the GTF file'))
     }
     
+    # Select cDNAs matching the annotation table
+    
     print(paste('Storing filtered sequences to', opt$filter_cdnas_output))
-    writeXStringSet(x = filtered_cdna, filepath = opt$filter_cdnas_output, compress = 'gzip')
-  }
-  
-  # If we have transcripts with no annotation, see if we can get it from the fasta names
-
-  if (length(cdna_only) > 0 && ! is.null(opt$parse_cdna_names)){
-    print(paste("Info missing from GTF for", length(cdna_only), "supplied cDNAs, trying to extract it from the cDNA FASTA headers"))
-    tinfo <- plyr::rbind.fill(lapply(names(cdna_only), parse_ensembl_fasta_transcript_info))
-    anno <- plyr::rbind.fill(as.data.frame(anno), tinfo[,colnames(tinfo) %in% colnames(anno)])
-  }else{
-    print("No transcripts missing from GTF")
+    writeXStringSet(x = cdnas[match(anno[[opt$parse_cdna_field]], tinfo[[opt$parse_cdna_field]])], filepath = opt$filter_cdnas_output, compress = 'gzip')
   }
 }
 
