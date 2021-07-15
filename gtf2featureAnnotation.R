@@ -222,7 +222,7 @@ if ( opt$feature_type == 'transcript' &&  all(c('transcript_id', 'transcript_ver
     print('Versioning transcripts')
   } else{
     opt$version_transcripts <- FALSE
-    print('Not versioning transcripts')
+    print('Not versioning transcripts (they do not look versioned)')
   }
 
   if ( opt$version_transcripts ){
@@ -251,11 +251,11 @@ if (! is.null(opt$parse_cdnas)){
   }
   
   # If we have transcripts with no annotation, see if we can get it from the fasta names
-  
+
   if (length(cdna_only) > 0 && ! is.null(opt$parse_cdna_names)){
     print(paste("Info missing from GTF for", length(cdna_only), "supplied cDNAs, trying to extract it from the cDNA FASTA headers"))
     tinfo <- plyr::rbind.fill(lapply(names(cdna_only), parse_ensembl_fasta_transcript_info))
-    anno <- plyr::rbind.fill(anno, tinfo)
+    anno <- plyr::rbind.fill(as.data.frame(anno), tinfo[,colnames(tinfo) %in% colnames(anno)])
   }
 }
 
