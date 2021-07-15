@@ -21,7 +21,7 @@ gtf2featureAnnotation.R --help
 ```
 
 ```
-Usage: ./gtf2featureAnnotation.R [options]
+Usage: gtf2featureAnnotation.R [options]
 
 
 Options:
