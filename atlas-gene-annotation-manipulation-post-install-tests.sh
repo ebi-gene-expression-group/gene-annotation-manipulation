@@ -33,7 +33,7 @@ setup() {
         skip "$test_gtf exists"
     fi
 
-    run rm -rf $test_gtf && wget -P $test_dir/data $test_cdna_uri && wget -P $test_dir/data $test_gtf_uri && zcat $test_gtf | grep -v Y110A7A.10.1 > $part_test_gtf
+    run rm -rf $test_gtf && wget -P $test_dir/data $test_cdna_uri && wget -P $test_dir/data $test_gtf_uri && gunzip -c $test_gtf | grep -v Y110A7A.10.1 > $part_test_gtf
 
     [ "$status" -eq 0 ]
     [ -f "$test_gtf" ]
