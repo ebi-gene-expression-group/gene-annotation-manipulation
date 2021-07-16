@@ -36,7 +36,7 @@ setup() {
         skip "$test_gtf exists"
     fi
 
-    run rm -rf $test_gtf && rm $test_cdna && wget -P $test_dir/data $test_cdna_uri && wget -P $test_dir/data $test_gtf_uri && gunzip -c $test_gtf | grep -v $test_gene_to_remove > $part_test_gtf
+    run rm -f $test_gtf && rm -f $test_cdna && wget -P $test_dir/data $test_cdna_uri && wget -P $test_dir/data $test_gtf_uri && gunzip -c $test_gtf | grep -v $test_gene_to_remove > $part_test_gtf
 
     [ "$status" -eq 0 ]
     [ -f "$test_gtf" ]
