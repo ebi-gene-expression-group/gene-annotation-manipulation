@@ -255,13 +255,10 @@ if (! is.null(opt$parse_cdnas)){
       print(paste("Info missing from GTF for", length(new_info), "supplied", opt$feature_type, "features annotated in cDNA headers, merging in the extra info."))
       
       # Limit new info to features not present in the GTF, and columns which are
-      anno <- plyr::rbind.fill(as.data.frame(anno), tinfo[tinfo[[opt$parse_cdna_field]] %in% new_info, colnames(tinfo) %in% colnames(anno)])
+      anno <- plyr::rbind.fill(as.data.frame(anno), tinfo[match(new_info, tinfo[[opt$parse_cdna_field]]), colnames(tinfo) %in% colnames(anno)])
     }else{
       print("No new info found in cDNA headers wrt GTF")
     }
-  }else{
-    tinfo <- data.frame(cdna_transcript_names)
-    colnames(tinfo) <- opt$parse_cdna_field
   }
   
   # Filter cDNAs if requested
@@ -276,9 +273,8 @@ if (! is.null(opt$parse_cdnas)){
     }
     
     # Select cDNAs matching the annotation table
-    
     print(paste('Storing filtered sequences to', opt$filter_cdnas_output))
-    writeXStringSet(x = cdnas[match(anno[[opt$parse_cdna_field]], tinfo[[opt$parse_cdna_field]])], filepath = opt$filter_cdnas_output, compress = 'gzip')
+    writeXStringSet(x = cdna[tinfo[[opt$parse_cdna_field]] %in% anno[[opt$parse_cdna_field]]], filepath = opt$filter_cdnas_output, compress = 'gzip')
   }
 }
 
