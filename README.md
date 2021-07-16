@@ -9,7 +9,7 @@ This package currently holds one script: gtf2featureAnnotation.R (though it may 
 The recommended method for script installation is via the Conda package:
 
 ```
-conda install -c ebi-gene-expression-group atlas-gene-annotation-manipulation
+conda install -c bioconda atlas-gene-annotation-manipulation
 ```
 
 ## Usage
