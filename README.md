@@ -1,5 +1,6 @@
 # Gene annotation manipulation
-[![install with Conda](https://img.shields.io/conda/v/ebi-gene-expression-group/atlas-gene-annotation-manipulation)](https://anaconda.org/ebi-gene-expression-group/atlas-gene-annotation-manipulation)
+
+[![Install with Conda](https://anaconda.org/bioconda/atlas-gene-annotation-manipulation/badges/installer/conda.svg)](https://anaconda.org/bioconda/atlas-gene-annotation-manipulation)
 
 This package currently holds one script: gtf2featureAnnotation.R (though it may contain more in future). gtf2featureAnnotation.R takes a GTF annotation file and creates a table of annotation by feature, optionally filtering a cDNA file supplied at the same time. 
 
