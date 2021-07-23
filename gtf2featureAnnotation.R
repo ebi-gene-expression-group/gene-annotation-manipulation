@@ -178,12 +178,6 @@ gtf <- import(opt$gtf_file, feature.type = opt$feature_type )
 anno <- cbind(chromosome = seqnames(gtf), as.data.frame(ranges(gtf)), elementMetadata(gtf))
 print(paste('Found', nrow(anno), 'features'))
 
-# Mark mitochondrial features
-
-if (opt$mito){
-  anno$mito <- ucfirst(as.character(tolower(anno$gene_biotype) %in% cleanlist(opt$mito_biotypes) | tolower(anno$chromosome) %in% cleanlist(opt$mito_chr)))
-}
-
 # If specified, put the desired field first
 
 if (! is.na(opt$first_field)){
@@ -276,6 +270,12 @@ if (! is.null(opt$parse_cdnas)){
     print(paste('Storing filtered sequences to', opt$filter_cdnas_output))
     writeXStringSet(x = cdna[tinfo[[opt$parse_cdna_field]] %in% anno[[opt$parse_cdna_field]]], filepath = opt$filter_cdnas_output, compress = 'gzip')
   }
+}
+
+# Mark mitochondrial features
+
+if (opt$mito){
+  anno$mito <- ucfirst(as.character(tolower(anno$gene_biotype) %in% cleanlist(opt$mito_biotypes) | tolower(anno$chromosome) %in% cleanlist(opt$mito_chr)))
 }
 
 # If specified, subset to desired fields
