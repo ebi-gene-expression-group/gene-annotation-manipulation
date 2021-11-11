@@ -237,7 +237,7 @@ if ( opt$feature_type == 'transcript' &&  all(c('transcript_id', 'transcript_ver
     anno$transcript_id <- versioned_transcripts
   } 
 }
-save.image()
+
 # If specified, filter down a provided cDNA FASTA file
 
 if (! is.null(opt$parse_cdnas)){
