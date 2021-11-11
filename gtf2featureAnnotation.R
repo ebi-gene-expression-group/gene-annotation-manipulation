@@ -143,13 +143,24 @@ if (is.na(opt$output_file)){
 # Try to get some annotation fields from the the transcript names themselves-
 # this will likely not work for non-Ensembl GTFs
 
-parse_ensembl_fasta_transcript_info <- function(tname){
-  description <- sub(".*description:(.*)", "\\1", tname)
-  tname <- sub(" description:.*", '', tname)
+parse_fasta_transcript_info <- function(tname, fa_header_style=NULL){
+  if (fa_header_style == 'ensembl'){
+    sep <- ':'
+  }else if (fa_header_style == 'wormbase'){
+    sep <- '='
+  }else{
+    sep <- ':|='  
+  }
+  
+  description=NULL
+  if (grepl('description:', tname)){
+    description <- sub(".*description:(.*)", "\\1", tname)
+    tname <- sub(" description:.*", '', tname)
+  }
   tsplit <- unlist(strsplit(tname, ' '))
   names(tsplit) <- lapply(tsplit, function(x){
-    if (grepl(':', x[1])){
-      cnames <- unique(unlist(lapply(strsplit(x, ':'), function(y) y[1])))
+    if (grepl(sep, x[1])){
+      cnames <- unique(unlist(lapply(strsplit(x, sep, fixed=FALSE), function(y) y[1])))
       if (length(cnames) == 1){
         return(cnames)
       }else{
@@ -159,8 +170,10 @@ parse_ensembl_fasta_transcript_info <- function(tname){
   })
   names(tsplit)[1] <- 'transcript_id'
   tsplit <- tsplit[names(tsplit) != 'NULL']
-  tsplit <- sub('.*:(.*)', "\\1", tsplit)
-  tsplit['description'] <- description
+  tsplit <- sub(paste0('.*(', sep,')(.*)'), "\\2", tsplit)
+  if (! is.null(description)){                            
+    tsplit['description'] <- description
+  }
   names(tsplit) <- sub('^gene$', 'gene_id', names(tsplit))
   names(tsplit) <- sub('^gene_symbol$', 'gene_name', names(tsplit))
   tsplit['gene_id'] <- sub('\\.[0-9]+', '', tsplit['gene_id'])
@@ -232,7 +245,15 @@ if (! is.null(opt$parse_cdnas)){
   # Derive annotation table from transcripts and use to augment GTF where necessary
   
   print("Parsing annotation info from cDNA FASTA headers")
-  tinfo <- plyr::rbind.fill(lapply(names(cdna), parse_ensembl_fasta_transcript_info))
+  fa_header_style <- NULL
+  if ('source' %in% colnames(anno)){
+    if (any(grepl('ensembl', anno$source)) || grepl('description:', names(cdna)[1])){
+      fa_header_style <- 'ensembl' 
+    }else{
+      fa_header_style <- tolower(as.character(anno$source[1]))
+    } 
+  }
+  tinfo <- plyr::rbind.fill(lapply(names(cdna), parse_fasta_transcript_info, fa_header_style))
   
   # If we're not parsing the headers for annotation and our feature type is
   # transcript, then we can assume the transcript names are all we need.
@@ -240,7 +261,7 @@ if (! is.null(opt$parse_cdnas)){
   if (opt$feature_type == 'transcript' && is.null(opt$parse_cdna_names)){
     tinfo <- data.frame(cdna_transcript_names)
     colnames(tinfo) <- opt$parse_cdna_field  
-  }else{
+  }else if (opt$parse_cdna_field %in% colnames(anno) && opt$parse_cdna_field %in% colnames(tinfo)){
     new_info <- unique(tinfo[[opt$parse_cdna_field]][! tinfo[[opt$parse_cdna_field]] %in% anno[[opt$parse_cdna_field]]])
       
     # If we have transcripts with no annotation, see if we can get it from the fasta names
@@ -249,7 +270,7 @@ if (! is.null(opt$parse_cdnas)){
       print(paste("Info missing from GTF for", length(new_info), "supplied", opt$feature_type, "features annotated in cDNA headers, merging in the extra info."))
       
       # Limit new info to features not present in the GTF, and columns which are
-      anno <- plyr::rbind.fill(as.data.frame(anno), tinfo[match(new_info, tinfo[[opt$parse_cdna_field]]), colnames(tinfo) %in% colnames(anno)])
+      anno <- plyr::rbind.fill(as.data.frame(anno), tinfo[match(new_info, tinfo[[opt$parse_cdna_field]]), colnames(tinfo) %in% colnames(anno), drop = FALSE])
     }else{
       print("No new info found in cDNA headers wrt GTF")
     }
