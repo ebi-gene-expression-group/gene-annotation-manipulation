@@ -20,7 +20,6 @@ jobs:
         uses: mamba-org/provision-with-micromamba@main
         with:
           environment-file: test-environment.yml
-          use-only-tar-bz2: true
 
       - name: Add workspace to path
         run: |
