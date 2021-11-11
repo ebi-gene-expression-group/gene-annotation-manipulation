@@ -239,7 +239,7 @@ if ( opt$feature_type == 'transcript' &&  all(c('transcript_id', 'transcript_ver
 }
 
 # If specified, filter down a provided cDNA FASTA file
-save.image()
+
 if (! is.null(opt$parse_cdnas)){
   
   # Derive annotation table from transcripts and use to augment GTF where necessary
