@@ -143,10 +143,10 @@ if (is.na(opt$output_file)){
 # Try to get some annotation fields from the the transcript names themselves-
 # this will likely not work for non-Ensembl GTFs
 
-parse_fasta_transcript_info <- function(tname, source=NULL){
-  if (source == 'ensembl'){
+parse_fasta_transcript_info <- function(tname, fa_header_style=NULL){
+  if (fa_header_style == 'ensembl'){
     sep <- ':'
-  }else if (source == 'wormbase'){
+  }else if (fa_header_style == 'wormbase'){
     sep <- '='
   }else{
     sep <- ':|='  
@@ -237,7 +237,7 @@ if ( opt$feature_type == 'transcript' &&  all(c('transcript_id', 'transcript_ver
     anno$transcript_id <- versioned_transcripts
   } 
 }
-
+save.image()
 # If specified, filter down a provided cDNA FASTA file
 
 if (! is.null(opt$parse_cdnas)){
@@ -245,15 +245,15 @@ if (! is.null(opt$parse_cdnas)){
   # Derive annotation table from transcripts and use to augment GTF where necessary
   
   print("Parsing annotation info from cDNA FASTA headers")
-  source <- NULL
+  fa_header_style <- NULL
   if ('source' %in% colnames(anno)){
-    if (any(grepl('ensembl', anno$source))){
-      source <- 'ensembl' 
+    if (any(grepl('ensembl', anno$source)) || grepl('description:', names(cdna)[1])){
+      fa_header_style <- 'ensembl' 
     }else{
-      source <- tolower(as.character(anno$source[1]))
+      fa_header_style <- tolower(as.character(anno$source[1]))
     } 
   }
-  tinfo <- plyr::rbind.fill(lapply(names(cdna), parse_fasta_transcript_info, source))
+  tinfo <- plyr::rbind.fill(lapply(names(cdna), parse_fasta_transcript_info, fa_header_style))
   
   # If we're not parsing the headers for annotation and our feature type is
   # transcript, then we can assume the transcript names are all we need.
