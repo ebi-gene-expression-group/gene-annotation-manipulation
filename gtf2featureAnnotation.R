@@ -239,7 +239,7 @@ if ( opt$feature_type == 'transcript' &&  all(c('transcript_id', 'transcript_ver
 }
 save.image()
 # If specified, filter down a provided cDNA FASTA file
-
+save.image()
 if (! is.null(opt$parse_cdnas)){
   
   # Derive annotation table from transcripts and use to augment GTF where necessary
@@ -270,7 +270,7 @@ if (! is.null(opt$parse_cdnas)){
       print(paste("Info missing from GTF for", length(new_info), "supplied", opt$feature_type, "features annotated in cDNA headers, merging in the extra info."))
       
       # Limit new info to features not present in the GTF, and columns which are
-      anno <- plyr::rbind.fill(as.data.frame(anno), tinfo[match(new_info, tinfo[[opt$parse_cdna_field]]), colnames(tinfo) %in% colnames(anno)])
+      anno <- plyr::rbind.fill(as.data.frame(anno), tinfo[match(new_info, tinfo[[opt$parse_cdna_field]]), colnames(tinfo) %in% colnames(anno), drop = FALSE])
     }else{
       print("No new info found in cDNA headers wrt GTF")
     }
