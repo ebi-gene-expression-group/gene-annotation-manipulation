@@ -195,7 +195,7 @@ print(paste('Found', nrow(anno), 'features'))
 
 if (! is.na(opt$first_field)){
   if (! opt$first_field %in% colnames(anno)){
-    die(paste(first_field, 'is not a valid field'))
+    die(paste(opt$first_field, 'is not a valid field'))
   }
   anno <- anno[,c(opt$first_field, colnames(anno)[colnames(anno) != opt$first_field])]
 }
